@@ -13,8 +13,6 @@ void recv(char* topic, byte* payload, unsigned int length)
         return;
     } 
 
-    if (json[DEV_NAME].asString() == )   
-
 }
 
 
