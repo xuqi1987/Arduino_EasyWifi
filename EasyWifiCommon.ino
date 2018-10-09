@@ -267,7 +267,7 @@ void connectMqttServer(String strAddress)
 {
   LOG("===================== connectMqttServer Start=========================");
   MQTTclient.setServer(strAddress.c_str(), 1883);
-  MQTTclient.setCallback(callback);
+  MQTTclient.setCallback(recv);
   LOG("===================== connectMqttServer End=========================");
 }
 

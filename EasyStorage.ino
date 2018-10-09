@@ -34,8 +34,8 @@ bool initConfig(Config& config)
         config.strConnectSsid = "";
         config.strConnectPwd = "";
         config.strMqttServiceAddress = "lot-xu.top";
-        config.strPubTopic = "out";
-        config.strSubTopic = "in";
+        config.strPubTopic = "homebridge/to/#";
+        config.strSubTopic = "homebridge/from/#";
         saveConfig(config);
     }
     else
