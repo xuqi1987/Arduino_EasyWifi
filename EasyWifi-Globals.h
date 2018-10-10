@@ -25,6 +25,8 @@ PubSubClient MQTTclient(mqtt);
 #define MQTT_SERVICE_ADDRESS "server_name"
 #define PUB_TOPIC "pub_topic"
 #define SUB_TOPIC "sub_topic"
+#define TOPIC_PREFIX "topic_prefix"
+#define SERVICE_NAME "service_name"
 
 #define LOG Serial.println
 
@@ -44,8 +46,10 @@ typedef struct _Config
     String strConnectSsid;
     String strConnectPwd;
     String strMqttServiceAddress;
-    String strPubTopic;
-    String strSubTopic;
+    String strTopicPrefix;
+    String strServiceName;
+    // String strPubTopic;
+    // String strSubTopic;
 
 }Config;
 
@@ -56,5 +60,7 @@ const char* CONFIG_FILE = "/config.js";
 const char* HOST = "EasyWiFi";
 const int BTN_PIN = D8;     // the number of the pushbutton pin
 const int LED_PIN =  2;      // the number of the LED pin
+
+const int SWITCH_PIN = D2;
 
 #endif

@@ -81,8 +81,8 @@ void rootRouter()
     DEV_CONNECT_SSID,config.strConnectSsid.c_str(),
     DEV_CONNECT_PWD,config.strConnectPwd.c_str(),
     MQTT_SERVICE_ADDRESS,config.strMqttServiceAddress.c_str(),
-    PUB_TOPIC,config.strPubTopic.c_str(),
-    SUB_TOPIC,config.strSubTopic.c_str());
+    TOPIC_PREFIX,config.strTopicPrefix.c_str(),
+    SERVICE_NAME,config.strServiceName.c_str());
   Serial.print("rootRouter ==> ");
   LOG(buffer);
 
@@ -126,14 +126,15 @@ void settingRouter()
       {
           config.strMqttServiceAddress = WebServer.arg(i);
       }
-      if (WebServer.argName(i) == PUB_TOPIC)
+      if (WebServer.argName(i) == TOPIC_PREFIX)
       {
-          config.strPubTopic = WebServer.arg(i);
+          config.strTopicPrefix = WebServer.arg(i);
       }
-      if (WebServer.argName(i) == SUB_TOPIC)
+      if (WebServer.argName(i) == SERVICE_NAME)
       {
-          config.strSubTopic = WebServer.arg(i);
+          config.strServiceName = WebServer.arg(i);
       }
+      
     }
     config.eState = Station_state;
     saveConfig(config);
@@ -166,8 +167,8 @@ void scanListRouter()
     DEV_CONNECT_SSID,String(*it).c_str(),
     DEV_CONNECT_PWD,config.strConnectPwd.c_str(),
     MQTT_SERVICE_ADDRESS,config.strMqttServiceAddress.c_str(),
-    PUB_TOPIC,config.strPubTopic.c_str(),
-    SUB_TOPIC,config.strSubTopic.c_str());
+    TOPIC_PREFIX,config.strTopicPrefix.c_str(),
+    SERVICE_NAME,config.strServiceName.c_str());
 
     message += "<li><a href='";
     message += url;
@@ -314,15 +315,19 @@ void reconnect() {
       
       LOG("connected");
       // Once connected, publish an announcement...
-      MQTTclient.publish(config.strPubTopic.c_str(), "hello world");
-      LOG(config.strPubTopic.c_str());
+      //MQTTclient.publish(config.strPubTopic.c_str(), "hello world");
+     // LOG(config.strPubTopic.c_str());
       // ... and resubscribe
       blinkLed(1);
+      LOG("Add accessory to HomeKit..");
+      removeAccessory();
+      delay(1000);
+      addAccessory();
       //snprintf (subTopic, 40, "%s#",inTopic.c_str());
-      MQTTclient.subscribe(config.strSubTopic.c_str());
+      MQTTclient.subscribe(String(config.strTopicPrefix + "/from/#").c_str());
 
       Serial.print("SubScribe:");
-      LOG(config.strSubTopic.c_str());
+      LOG(String(config.strTopicPrefix + "/from/#").c_str());
 
     } else {
       Serial.print("failed, rc=");

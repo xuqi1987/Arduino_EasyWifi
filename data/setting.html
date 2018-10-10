@@ -39,8 +39,8 @@ function load_param()
 	document.getElementById('dev_name').value = GetArgsFromHref(url,'dev_name');
 	document.getElementById('ap_name').value = GetArgsFromHref(url,'ap_name');
 	document.getElementById('server_name').value = GetArgsFromHref(url,'server_name');
-	document.getElementById('pub_topic').value = GetArgsFromHref(url,'pub_topic');
-	document.getElementById('sub_topic').value = GetArgsFromHref(url,'sub_topic');
+	document.getElementById('topic_prefix').value = GetArgsFromHref(url,'topic_prefix');
+	document.getElementById('service_name').value = GetArgsFromHref(url,'service_name');
 }
 
 function onChooseWifi()
@@ -76,12 +76,22 @@ function onChooseWifi()
     <fieldset>
       <input id="server_name" placeholder="服务器地址" type="text" name="server_name" tabindex="5" required>
     </fieldset>
-        <fieldset>
-      <input id="pub_topic" placeholder="发布主题" type="text" name="pub_topic" tabindex="6" required>
+    <fieldset>
+      <input id="topic_prefix" placeholder="主题前缀" type="text" name="topic_prefix" tabindex="6" required>
     </fieldset>
-        <fieldset>
-      <input id="sub_topic" placeholder="订阅主题" type="text" name="sub_topic" tabindex="7" required>
-    </fieldset>
+    <fieldset>
+		<select id="service_name" name="service_name">
+			<option value="Switch">开关</option>
+			<option value="Lightbulb">灯泡</option>
+			<option value="OccupancySensor">人体传感器</option>
+			<option value="AirQualitySensor">空气质量传感器</option>
+			<option value="Fan">风扇</option>
+			<option value="HumiditySensor">湿度</option>
+			<option value="LightSensor">光照传感器</option>
+			<option value="TemperatureSensor">温度</option>
+
+		</select>
+        </fieldset>
     <fieldset>
       <button name="submit" type="submit" id="contact-submit" data-submit="...Sending">修改</button>
     </fieldset>

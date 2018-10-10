@@ -34,8 +34,10 @@ bool initConfig(Config& config)
         config.strConnectSsid = "";
         config.strConnectPwd = "";
         config.strMqttServiceAddress = "lot-xu.top";
-        config.strPubTopic = "homebridge/to/#";
-        config.strSubTopic = "homebridge/from/#";
+        config.strTopicPrefix = "homebridge";
+        config.strServiceName = "Switch";
+        // config.strPubTopic = "homebridge/to/#";
+        // config.strSubTopic = "homebridge/from/#";
         saveConfig(config);
     }
     else
@@ -83,8 +85,10 @@ bool loadConfig(Config& config)
     config.strConnectSsid = json[DEV_CONNECT_SSID].asString();
     config.strConnectPwd = json[DEV_CONNECT_PWD].asString();
     config.strMqttServiceAddress = json[MQTT_SERVICE_ADDRESS].asString();
-    config.strPubTopic = json[PUB_TOPIC].asString();
-    config.strSubTopic = json[SUB_TOPIC].asString();
+    config.strTopicPrefix = json[TOPIC_PREFIX].asString();
+    config.strServiceName = json[SERVICE_NAME].asString();
+    // config.strPubTopic = json[PUB_TOPIC].asString();
+    // config.strSubTopic = json[SUB_TOPIC].asString();
 
     json.prettyPrintTo(Serial);
 
@@ -104,8 +108,10 @@ bool saveConfig(Config& config)
   json[DEV_CONNECT_SSID] = config.strConnectSsid;
   json[DEV_CONNECT_PWD]= config.strConnectPwd;
   json[MQTT_SERVICE_ADDRESS] = config.strMqttServiceAddress;
-  json[PUB_TOPIC] = config.strPubTopic;
-  json[SUB_TOPIC] = config.strSubTopic;
+  json[TOPIC_PREFIX] = config.strTopicPrefix;
+  json[SERVICE_NAME] = config.strServiceName;
+//   json[PUB_TOPIC] = config.strPubTopic;
+//   json[SUB_TOPIC] = config.strSubTopic;
 
   File configFile = SPIFFS.open(CONFIG_FILE, "w");
   if (!configFile) {
