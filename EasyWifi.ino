@@ -64,20 +64,44 @@ void loop() {
     
     MQTTclient.loop();
 
-    if (checkResetBtnPress())
+    LoopAccessoryLoop(config);
+
+    if (checkResetBtnPress() )
     {
-      LOG("===============Reset Button Pressed===========");
-      SPIFFS.remove(CONFIG_FILE);
-      config.eState = Ap_state;
-      setWifiMode(WIFI_STA);
-      scanWifi(g_arrayList);
-      printScanList(g_arrayList);
-      setWifiApServer(config.strApName);
-      
+        resetConfig();
     }
   }
-
-
-  
-
 }
+
+
+void resetConfig()
+{   
+  Config config;
+  loadConfig(config);
+  LOG("===============Reset Config===========");
+  SPIFFS.remove(CONFIG_FILE);
+  config.eState = Ap_state;
+  setWifiMode(WIFI_STA);
+  scanWifi(g_arrayList);
+  printScanList(g_arrayList);
+  setWifiApServer(config.strApName);
+}
+void LoopAccessoryLoop(Config &config)
+{
+  if (config.strServiceName.equals(String("Ws2812b-Lightbulb")))
+  {
+      //LOG("LoopAccessoryLoop Ws2812b");
+      ws2812fx.service();
+  }
+}
+
+// void serialEvent() {
+//   if (Serial.available()) {
+//     // get the new byte:
+//     char inChar = (char)Serial.read();
+
+//     if (inChar == '0') {
+//       resetConfig();
+//     }
+//   }
+// }

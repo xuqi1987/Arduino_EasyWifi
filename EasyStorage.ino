@@ -50,7 +50,7 @@ bool initConfig(Config& config)
 bool loadConfig(Config& config)
 {
 
-    LOG("===================== loadConfig Start=========================");
+    //LOG("===================== loadConfig Start=========================");
     File configFile = SPIFFS.open(CONFIG_FILE, "r");
     if (!configFile) {
         LOG("Failed to open config file");
@@ -90,9 +90,9 @@ bool loadConfig(Config& config)
     // config.strPubTopic = json[PUB_TOPIC].asString();
     // config.strSubTopic = json[SUB_TOPIC].asString();
 
-    json.prettyPrintTo(Serial);
+    //json.prettyPrintTo(Serial);
 
-    LOG("\n===================== loadConfig End=========================");
+   // LOG("\n===================== loadConfig End=========================");
 
     return true;
 }

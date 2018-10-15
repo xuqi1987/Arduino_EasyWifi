@@ -5,12 +5,15 @@ void initPin()
   // initialize the LED pin as an output:
   pinMode(LED_PIN, OUTPUT);
   // initialize the pushbutton pin as an input:
+  #ifndef ESP01
+
   pinMode(BTN_PIN, INPUT);
-  
+  #endif
 }
 
 bool checkResetBtnPress()
 {
+#ifndef ESP01
   if (HIGH == digitalRead(BTN_PIN) )
   {
     return true;
@@ -19,6 +22,11 @@ bool checkResetBtnPress()
   {
     return false;
   }
+#else
+  return false;
+#endif
+
+
 }
 
 void setWifiMode(WiFiMode_t wifimode) {
@@ -321,10 +329,13 @@ void reconnect() {
       blinkLed(1);
       LOG("Add accessory to HomeKit..");
       removeAccessory();
-      delay(1000);
-      addAccessory();
-      //snprintf (subTopic, 40, "%s#",inTopic.c_str());
+      delay(500);
       MQTTclient.subscribe(String(config.strTopicPrefix + "/from/#").c_str());
+      delay(500);
+      addAccessory();
+      
+      //snprintf (subTopic, 40, "%s#",inTopic.c_str());
+      
 
       Serial.print("SubScribe:");
       LOG(String(config.strTopicPrefix + "/from/#").c_str());

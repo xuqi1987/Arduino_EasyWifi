@@ -42,7 +42,7 @@ Esp8266上使用Arduino烧写本项目的EasyWifi.
 
 ## Quickstart
 
-#### 树莓派安装homebridge
+### 树莓派安装homebridge
 
 **~/.homebridge/config.json**
 
@@ -60,8 +60,8 @@ Esp8266上使用Arduino烧写本项目的EasyWifi.
     
   "platforms": [
     {
-        "platform": "mqtt",
-  	"name": "mqtt",
+    "platform": "mqtt",
+  	"name": “homebridge”,
   	"url": "mqtt://lot-xu.top",
   	"port": "1883",
   	"topic_type": "multiple",
@@ -76,6 +76,31 @@ Esp8266上使用Arduino烧写本项目的EasyWifi.
 ![](./img/6.jpg)
 ![](./img/5.jpg)
 
+### 8266控制开关
+
+[ESP-01S 模块 继电器
+](https://item.taobao.com/item.htm?spm=a230r.1.14.22.598026eekDEPEF&id=570953942453&ns=1&abbucket=9#detail)
+
+![](./img/8.png)
+
+[精密5V700mA](https://item.taobao.com/item.htm?spm=a1z09.2.0.0.16e32e8doaJbNj&id=544195300484&_u=f11aik5dbae1)
+
+![](./img/9.png)
+
+**把这些放在一个盒子中：**
+
+![](./img/7.png)
+
+**盖上盖子，接上射灯和插头**
+
+![](./img/10.png)
+
+
+### 8266通过DHT11 获取温度和湿度
+
+[ESP-01S DHT11 温湿度](https://item.taobao.com/item.htm?spm=a1z09.2.0.0.16e32e8doaJbNj&id=564986974149&_u=f11aik5dc60d)
+
+![](./img/11.png)
 
 ***
 

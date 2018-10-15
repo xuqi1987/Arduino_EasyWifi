@@ -1,6 +1,26 @@
 #ifndef EASYWIFI_GLOBALS_H_
 #define EASYWIFI_GLOBALS_H_
 
+#define ESP01
+
+const char* CONFIG_FILE = "/config.js";
+const char* HOST = "EasyWiFi";
+
+#ifdef ESP01
+const int LED_PIN =  2;      // the number of the LED pin
+const int DHT_PIN = 2; 
+const int WS2812_PIN = 0;
+const int SWITCH_PIN = 0;
+#else
+const int BTN_PIN = D8;     // the number of the pushbutton pin
+const int LED_PIN =  2;      // the number of the LED pin
+
+const int SWITCH_PIN = D2;
+#endif
+
+
+
+
 // --- Basic Config Settings ------------------------------------------------------------------------
 #include <list>
 
@@ -27,6 +47,16 @@ PubSubClient MQTTclient(mqtt);
 #define SUB_TOPIC "sub_topic"
 #define TOPIC_PREFIX "topic_prefix"
 #define SERVICE_NAME "service_name"
+
+
+#include <WS2812FX.h>
+
+WS2812FX ws2812fx = WS2812FX(8, WS2812_PIN, NEO_GRB + NEO_KHZ800);
+
+
+#include "DHT.h"
+
+DHT dht(DHT_PIN, DHT11);
 
 #define LOG Serial.println
 
@@ -56,11 +86,8 @@ typedef struct _Config
 
 ScanList g_arrayList;
 
-const char* CONFIG_FILE = "/config.js";
-const char* HOST = "EasyWiFi";
-const int BTN_PIN = D8;     // the number of the pushbutton pin
-const int LED_PIN =  2;      // the number of the LED pin
 
-const int SWITCH_PIN = D2;
+
+
 
 #endif
