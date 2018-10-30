@@ -14,7 +14,36 @@ String getServiceByName(String strName,int index)
     {
         return String("TemperatureSensor");
     }
+    if (strName.equals(String("GreeAC")) && index == 0) 
+    {
+        return String("Thermostat");
+    }
+
     return strName;
+}
+
+// 如果是自定义设备的化，设备的信息会从网上下下来
+
+bool isCustomAccessory(Config &config)
+{
+    if (config.strServiceName.equals(String("IRremote")))
+    {
+        return true;
+    }
+    return false;
+}
+
+int getAccessoryNum(Config &config)
+{
+    // 如果一个esp设备要加两个传感器
+    if (config.strServiceName.equals(String("DHT11")))
+    {
+        return 2;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 String getName(String strName,int index = 0)
@@ -33,18 +62,6 @@ String getName(String strName,int index = 0)
     return strNewName;
 }
 
-int getAccessoryNum(Config &config)
-{
-    // 如果一个esp设备要加两个传感器
-    if (config.strServiceName.equals(String("DHT11")))
-    {
-        return 2;
-    }
-    else
-    {
-        return 1;
-    }
-}
 
 void initAccessory(Config &config)
 {
@@ -64,67 +81,156 @@ void initAccessory(Config &config)
         LOG("init DHT 11");
         dht.begin();
     }
+    if (config.strServiceName.equals(String("IRremote")))
+    {
+        pinMode(IR_PIN,OUTPUT);
+    }
+
 }
 
-void addAccessory()
+void loadCustomAccessory(String &strJsonAccInfo)
 {
-    Config config;
-    loadConfig(config);
+    // 取得自定义Accessory的信息
+    int code = restClient.get("/",&strJsonAccInfo);
 
-    // 判断ServcieName需要追加几个Accessory
-    int num = getAccessoryNum(config);
-
-    for (int index =0; index < num; index++)
-    {
-        String addTopic = String(config.strTopicPrefix + "/to/add");
-        String data;
-        StaticJsonBuffer<200> jsonBuffer;
-        JsonObject& json = jsonBuffer.createObject();
-        String name = getName(config.strDeviceName,index);
-        json["name"] = name.c_str();
-        json["service_name"] = config.strServiceName.c_str();
-
-        String strService = getServiceByName(config.strServiceName ,index);
-        json["service"] = strService.c_str();
-
-
-        if (strService.equals(String("Lightbulb")))
-        {
-            json["Brightness"] = "default";
-        }
-        json.printTo(data);
-
-        Serial.print("addAccessory: ");
-        LOG(data);
-        MQTTclient.publish(addTopic.c_str(), data.c_str());
+    if (code == 200)
+    {   
+        LOG("=================Download Success==================");
+        saveIRDatabase(strJsonAccInfo);
     }
+    else
+    {
+        LOG("=================Download Failed==================");
+        
+        strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"Thermostat\",\"service_name\":\"IRRemoteAC\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+        //strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+        saveIRDatabase(strJsonAccInfo);
+        /*
+        if (readIRDatabase(strJsonAccInfo) <0)
+        {
+            //strJsonAccInfo="[{\"name\":\"OtherAC\",\"service\":\"Thermostat\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           //strJsonAccInfo="[{\"name\":\"GreeAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           saveIRDatabase(strJsonAccInfo);
+        }
+        */
+    }
+}
+
+void opAccessory(bool isAdd,Config & config)
+{
+    // 判断是否是自定义数据
+    if (isCustomAccessory(config))
+    {
+        StaticJsonBuffer<1024> staticJsonBuffer;
+        
+        String strJsonAccInfo;
+        loadCustomAccessory(strJsonAccInfo);
+
+        JsonArray& arrayAccessory = staticJsonBuffer.parseArray(strJsonAccInfo.c_str());
+
+        for (JsonObject& objAccessory : arrayAccessory) 
+        {
+            String data;
+            String addTopic;
+
+            if (isAdd) 
+            {
+                addTopic = String(config.strTopicPrefix + "/to/add");
+            }
+            else
+            {
+                addTopic = String(config.strTopicPrefix + "/to/remove");
+            }
+            
+            const int capacity = JSON_OBJECT_SIZE(3);
+            StaticJsonBuffer<capacity> jsonBuffer;
+            JsonObject& json = jsonBuffer.createObject();
+            
+            json["name"] = objAccessory["name"].as<char*>();
+
+            if (isAdd)
+            {
+                json["service_name"] = objAccessory["service_name"].as<char*>();
+                json["service"] = objAccessory["service"].as<char*>();
+                Serial.print("addAccessory: ");
+            }
+            else
+            {
+                Serial.print("removeAccessory: ");
+            }
+    
+            json.printTo(data);
+
+            LOG(data);
+            MQTTclient.publish(addTopic.c_str(), data.c_str());
+        }
+
+    }
+    else
+    {
+        // 判断ServcieName需要追加几个Accessory
+        int num = getAccessoryNum(config);
+        for (int index =0; index < num; index++)
+        {
+            String data;
+            String addTopic;
+
+            if (isAdd) 
+            {
+                addTopic = String(config.strTopicPrefix + "/to/add");
+            }
+            else
+            {
+                addTopic = String(config.strTopicPrefix + "/to/remove");
+            }
+
+            const int capacity = JSON_OBJECT_SIZE(4);
+            StaticJsonBuffer<capacity> jsonBuffer;
+            JsonObject& json = jsonBuffer.createObject();
+            String name = getName(config.strDeviceName,index);
+            json["name"] = name.c_str();
+
+            if (isAdd)
+            {
+                json["service_name"] = config.strServiceName.c_str();
+                String strService = getServiceByName(config.strServiceName ,index);
+                json["service"] = strService.c_str();
+
+                if (strService.equals(String("Lightbulb")))
+                {
+                    json["Brightness"] = "default";
+                }
+
+                Serial.print("addAccessory: ");
+            }
+            else
+            {
+                Serial.print("removeAccessory: ");
+            }
+            
+            json.printTo(data);
+            LOG(data);
+            MQTTclient.publish(addTopic.c_str(), data.c_str());
+        }
+    }
+
+    // 初始化pin 脚模式
+    initAccessory(config); 
+}
+void addAccessory(Config &config)
+{
+    opAccessory(true,config);
+
     // 初始化pin 脚模式
     initAccessory(config);
 
 }
 
-void removeAccessory()
+void removeAccessory(Config &config)
 {
-    Config config;
-    loadConfig(config);
-   // 判断ServcieName需要追加几个Accessory
-    int num = getAccessoryNum(config);
+    opAccessory(false,config);
 
-    for (int index =0; index < num; index++)
-    {
-        String addTopic = String(config.strTopicPrefix + "/to/remove");
-        String data;
-        StaticJsonBuffer<200> jsonBuffer;
-        JsonObject& json = jsonBuffer.createObject();
-        String name = getName(config.strDeviceName,index);
-        json["name"] = name.c_str();
-        json.printTo(data);
-        LOG(name);
-
-        Serial.print("removeAccessory: ");
-        LOG(data);
-        MQTTclient.publish(addTopic.c_str(), data.c_str());
-    }
 }
 
 void setSwitchValue2Homebridge(bool value)
@@ -134,7 +240,8 @@ void setSwitchValue2Homebridge(bool value)
 
     String addTopic = String(config.strTopicPrefix + "/to/set");
     String data;
-    StaticJsonBuffer<200> jsonBuffer;
+    const int capacity = JSON_OBJECT_SIZE(4);
+    StaticJsonBuffer<capacity> jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
     json["name"] = config.strDeviceName.c_str();
     json["service_name"] = config.strServiceName.c_str();
@@ -154,7 +261,8 @@ void setDHT11HumidityValue2Homebridge(float fHumidity,JsonObject& in_json)
 
     String addTopic = String(config.strTopicPrefix + "/to/set");
     String data;
-    StaticJsonBuffer<200> jsonBuffer;
+    const int capacity = JSON_OBJECT_SIZE(4);
+    StaticJsonBuffer<capacity> jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
     json["name"] = in_json["name"].asString();
     json["service_name"] = in_json["service_name"].asString();
@@ -174,7 +282,8 @@ void setDHT11TemperatureValue2Homebridge(float fTemperature,JsonObject& in_json)
 
     String addTopic = String(config.strTopicPrefix + "/to/set");
     String data;
-    StaticJsonBuffer<200> jsonBuffer;
+    const int capacity = JSON_OBJECT_SIZE(4);
+    StaticJsonBuffer<capacity> jsonBuffer;
     JsonObject& json = jsonBuffer.createObject();
     json["name"] = in_json["name"].asString();
     json["service_name"] = in_json["service_name"].asString();
@@ -192,15 +301,17 @@ void recv(char* topic, byte* payload, unsigned int length)
     Config config;
     loadConfig(config);
 
-    LOG(topic);
     String strTopic = topic;
     String strJsondata = (char*)payload;
+    strJsondata = strJsondata.substring(0,length);
 
     StaticJsonBuffer<1024> jsonBuffer;
     JsonObject& json = jsonBuffer.parseObject(strJsondata);
 
     if (!json.success()) {
-        LOG("Failed to parse recv json data");
+        
+        Serial.print("Failed to parse recv json data:");
+        LOG(strJsondata);
         return;
     } 
     
@@ -219,26 +330,42 @@ void recv(char* topic, byte* payload, unsigned int length)
         Serial.print("homebrige ==>Set: ");
         LOG(strJsondata);
         
-        if (config.strDeviceName.equals(json["name"].asString()))
+        if (isCustomAccessory(config))
         {
-            // 用Service Name 区分是什么功能
-            if (String("Switch").equals(json["service_name"].asString()))
+            if (String("IRRemoteAC").equals(json["service_name"].asString()))
             {
-                setSwitch(json);
+                sendAC_CMD(json["name"].asString(),json["characteristic"].asString(),json["value"].as<int>());
             }
-            else if (String("Lightbulb").equals(json["service_name"].asString()))
+            
+        }
+        else
+        {
+            if (config.strDeviceName.equals(json["name"].asString()))
             {
-                setLightbulb(json);
-            }
-            else if (String("Ws2812b-Lightbulb").equals(json["service_name"].asString()))
-            {
-                setWs2812bLightbulb(json);
-            }
-            else
-            {
-                LOG(json["service_name"].asString());
+                // 用Service Name 区分是什么功能
+                if (String("Switch").equals(json["service_name"].asString()))
+                {
+                    setSwitch(json);
+                }
+                else if (String("Lightbulb").equals(json["service_name"].asString()))
+                {
+                    setLightbulb(json);
+                }
+                else if (String("Ws2812b-Lightbulb").equals(json["service_name"].asString()))
+                {
+                    setWs2812bLightbulb(json);
+                }
+                else if(String("Thermostat").equals(json["service_name"].asString()))
+                {
+                    setThermostat(json);
+                }
+                else
+                {
+                    LOG(json["service_name"].asString());
+                }
             }
         }
+
     }
     // 收到homebrige的response
     else if(strTopic == String(config.strTopicPrefix + "/from/response"))
@@ -246,9 +373,16 @@ void recv(char* topic, byte* payload, unsigned int length)
         Serial.print("homebrige ==>response: ");
         LOG(strJsondata);
     }
+    // 收到homebrige的response
+    else if(strTopic == String(config.strTopicPrefix + "/from/IR/info"))
+    {
+        LOG(strJsondata);
+        saveIRDatabase(strJsondata);
+        LOG("homebrige ==>/from/IR: ");  
+    }
     else
     {
-        
+        LOG(strTopic);
     }
     
 
@@ -258,3 +392,42 @@ void send(String topic,String data)
 {   
     MQTTclient.publish(topic.c_str(), data.c_str());
 }
+
+
+/*
+int searchRawData(String &strAccName,String &strFeature, JsonArray &rawData)
+{
+    String strJson;
+    if (readIRDatabase(strJson) < 0)
+    {
+        strJson = "[{\"name\":\"OtherAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[1,3,4,5,6,7,8,9,0,1],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]},{\"name\":\"GreeAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[2,3,4,5,6,7,2,4,5,6,7,3],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+    }
+
+    const int capacity = 2*JSON_ARRAY_SIZE(0) + 3*JSON_ARRAY_SIZE(2) + 2*JSON_ARRAY_SIZE(10) + 6*JSON_OBJECT_SIZE(3);
+    StaticJsonBuffer<capacity> jsonBuffer;
+
+    JsonArray& arrayAccessory = jsonBuffer.parseArray(strJson.c_str());
+
+    if (!arrayAccessory.success()) 
+    {
+        Serial.println("parseObject() failed");
+        return -1;
+    }
+    for (JsonObject& objAccessory : arrayAccessory) {
+        if (strAccName.equals(String(objAccessory["name"].as<char*>())))
+        {
+            JsonArray & arrayFeature = objAccessory["feature"];
+
+            for (JsonObject& objFeature : arrayFeature) 
+            {
+                Serial.println(objFeature["name"].as<char*>());
+                //Serial.println(elem1["len"].as<int>());
+                rawData = objFeature["rawData"];
+                Serial.println(rawData.size());
+                return 1;
+            }           
+        }
+    }
+    return 0;
+}
+*/

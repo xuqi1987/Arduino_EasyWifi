@@ -64,6 +64,12 @@ void setWs2812bLightbulb(JsonObject& json)
     }
 }
 
+
+void setThermostat(JsonObject& json)
+{
+    sendAC_CMD(json["name"].asString(),json["characteristic"].asString(),json["value"].as<int>());
+}
+
 void getDHT11Sensor(JsonObject& json)
 {
     // Check if any reads failed and exit early (to try again).
@@ -91,9 +97,6 @@ void getDHT11Sensor(JsonObject& json)
     Serial.print("Temperature: ");
     Serial.print(t);
     Serial.print(" *C ");
-    // Serial.print("Heat index: ");
-    // Serial.print(hic);
-    // Serial.print(" *C ");
 
     if (String("CurrentRelativeHumidity").equals(json["characteristic"].asString()))
     {   

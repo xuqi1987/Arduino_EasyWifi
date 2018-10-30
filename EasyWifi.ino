@@ -31,6 +31,7 @@ void setup() {
 
       connectStation(config.strConnectSsid,config.strConnectPwd);
       connectMqttServer(config.strMqttServiceAddress);
+      
   }
   else
   {

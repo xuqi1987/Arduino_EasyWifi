@@ -1,9 +1,10 @@
 #ifndef EASYWIFI_GLOBALS_H_
 #define EASYWIFI_GLOBALS_H_
 
-#define ESP01
+//#define ESP01
 
 const char* CONFIG_FILE = "/config.js";
+const char* IR_DB = "/IR.db";
 const char* HOST = "EasyWiFi";
 
 #ifdef ESP01
@@ -11,11 +12,15 @@ const int LED_PIN =  2;      // the number of the LED pin
 const int DHT_PIN = 2; 
 const int WS2812_PIN = 0;
 const int SWITCH_PIN = 0;
+
 #else
 const int BTN_PIN = D8;     // the number of the pushbutton pin
 const int LED_PIN =  2;      // the number of the LED pin
+const int DHT_PIN = 2; 
 
 const int SWITCH_PIN = D2;
+const int IR_PIN = D5;
+const int WS2812_PIN = 0;
 #endif
 
 
@@ -57,6 +62,10 @@ WS2812FX ws2812fx = WS2812FX(8, WS2812_PIN, NEO_GRB + NEO_KHZ800);
 #include "DHT.h"
 
 DHT dht(DHT_PIN, DHT11);
+
+#include "RestClient.h"
+
+RestClient restClient = RestClient("127.0.0.1", 5000);
 
 #define LOG Serial.println
 

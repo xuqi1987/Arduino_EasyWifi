@@ -237,7 +237,7 @@ void connectStation(String strSsid,String strPWD)
     int count = 0;
     int delayTime = 500;
     WiFi.begin(strSsid.c_str(), strPWD.c_str());
-
+  
     while (WiFi.status() != WL_CONNECTED) 
     {
       delay(delayTime);
@@ -267,7 +267,7 @@ void connectStation(String strSsid,String strPWD)
     }
     Serial.print("\nWiFi connected,Get IP:");
     LOG(WiFi.localIP());
-
+    
     digitalWrite(LED_PIN,HIGH);
     LOG("===================== connectStation End=========================");
 }
@@ -328,17 +328,18 @@ void reconnect() {
       // ... and resubscribe
       blinkLed(1);
       LOG("Add accessory to HomeKit..");
-      removeAccessory();
+      removeAccessory(config);
       delay(500);
       MQTTclient.subscribe(String(config.strTopicPrefix + "/from/#").c_str());
       delay(500);
-      addAccessory();
+      
+      addAccessory(config);
       
       //snprintf (subTopic, 40, "%s#",inTopic.c_str());
-      
-
       Serial.print("SubScribe:");
       LOG(String(config.strTopicPrefix + "/from/#").c_str());
+
+      MQTTclient.publish("DB/IR/get","");
 
     } else {
       Serial.print("failed, rc=");

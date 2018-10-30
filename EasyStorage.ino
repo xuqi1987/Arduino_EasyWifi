@@ -49,7 +49,6 @@ bool initConfig(Config& config)
 
 bool loadConfig(Config& config)
 {
-
     //LOG("===================== loadConfig Start=========================");
     File configFile = SPIFFS.open(CONFIG_FILE, "r");
     if (!configFile) {
@@ -124,6 +123,56 @@ bool saveConfig(Config& config)
   LOG("\n===================== saveConfig End=========================");  
   return true;
 }
+
+bool saveIRDatabase(String &strIRDB)
+{
+    LOG("============saveIRDatabase Start====================");
+    File dbFile = SPIFFS.open(IR_DB, "w");
+    if (!dbFile) {
+        LOG("Failed to open db file for writing");
+        return false;
+    }
+    LOG("\n");
+    LOG(strIRDB);
+
+    if(dbFile.print(strIRDB.c_str()))
+    {
+        LOG("write DB success!");
+    }
+    else
+    {
+        LOG("write DB failed!");
+    }
+
+    dbFile.close();
+    LOG("============saveIRDatabase End====================");
+    
+}
+
+int readIRDatabase(String &strIRDB)
+{
+    LOG("============readIRDatabase Start====================");
+    File dbFile = SPIFFS.open(IR_DB, "r");
+    if (!dbFile) {
+        strIRDB = "";
+        LOG("Failed to open db file for read");
+        return -1;
+    }
+    int s = dbFile.size();
+
+    Serial.print("size: ");
+    Serial.print(s);
+
+    strIRDB = dbFile.readString();
+
+    LOG(strIRDB.c_str());
+    LOG("============readIRDatabase End====================");
+    dbFile.close();
+
+    return s;
+    
+}
+
 
 
 
