@@ -102,9 +102,36 @@ Esp8266上使用Arduino烧写本项目的EasyWifi.
 
 ![](./img/11.png)
 
-### 红外控制格力空调
+### 红外控制空调
 
 
+向HomeBridge发送追加传感器的消息
+```
+{"name":"GreeAc","service_name":"IRRemoteAC","service":"Thermostat"}
+```
 
+收到HomeBridge设置变更的消息
+```
+{"name":"GreeAc","service_name":"IRRemoteAC","characteristic":"TargetHeatingCoolingState","value":1}```
 ***
+
+需要有两个文件，一个存Accessory的List，另外一个存IR数据库。
+
+Accessory文件格式
+
+```
+[{"name":"GreeAc","service_name":"IRRemoteAC","service":"Thermostat"},
+{"name":"SansungAC","service_name":"IRRemoteAC","service":"Thermostat”}],
+
+[{"name":"TVBox","service_name":"IRRemoteAC","service":"Thermostat"},
+
+```
+
+数据库文件格式
+```
+[{“name”:”TVBox”,”feature”:”power_on_off”,”type”:”NEC”,”code”:”80BF3BC4”,”len”:32},
+{“name”:”TVBox”,”feature”:”power_on”,”type”:”NEC”,”code”:”80BF3BC4”,”len”:32}
+]
+
+```
 

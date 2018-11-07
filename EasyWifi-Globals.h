@@ -5,6 +5,7 @@
 
 const char* CONFIG_FILE = "/config.js";
 const char* IR_DB = "/IR.db";
+const char* ACC_LIST = "/ACC_LIST.db";
 const char* HOST = "EasyWiFi";
 
 #ifdef ESP01
@@ -17,6 +18,7 @@ const int SWITCH_PIN = 0;
 const int BTN_PIN = D8;     // the number of the pushbutton pin
 const int LED_PIN =  2;      // the number of the LED pin
 const int DHT_PIN = 2; 
+const int IR_LED = 4;  // ESP8266 GPIO pin to use. Recommended: 4 (D2).
 
 const int SWITCH_PIN = D2;
 const int IR_PIN = D5;
@@ -66,6 +68,12 @@ DHT dht(DHT_PIN, DHT11);
 #include "RestClient.h"
 
 RestClient restClient = RestClient("127.0.0.1", 5000);
+
+
+#include <IRsend.h>
+
+IRsend irsend(IR_LED);  // Set the GPIO to be used to sending the message.
+
 
 #define LOG Serial.println
 

@@ -124,18 +124,18 @@ bool saveConfig(Config& config)
   return true;
 }
 
-bool saveIRDatabase(String &strIRDB)
+bool writeAccessoryInfo(String &strAccessoryList)
 {
-    LOG("============saveIRDatabase Start====================");
+    LOG("============writeAccessoryInfo Start====================");
     File dbFile = SPIFFS.open(IR_DB, "w");
     if (!dbFile) {
         LOG("Failed to open db file for writing");
         return false;
     }
     LOG("\n");
-    LOG(strIRDB);
+    LOG(strAccessoryList);
 
-    if(dbFile.print(strIRDB.c_str()))
+    if(dbFile.print(strAccessoryList.c_str()))
     {
         LOG("write DB success!");
     }
@@ -145,16 +145,16 @@ bool saveIRDatabase(String &strIRDB)
     }
 
     dbFile.close();
-    LOG("============saveIRDatabase End====================");
+    LOG("============writeAccessoryInfo End====================");
     
 }
 
-int readIRDatabase(String &strIRDB)
+int readAccessoryInfo(String &strAccessoryList)
 {
-    LOG("============readIRDatabase Start====================");
-    File dbFile = SPIFFS.open(IR_DB, "r");
+    LOG("============readAccessoryInfo Start====================");
+    File dbFile = SPIFFS.open(ACC_LIST, "r");
     if (!dbFile) {
-        strIRDB = "";
+        strAccessoryList = "";
         LOG("Failed to open db file for read");
         return -1;
     }
@@ -163,10 +163,59 @@ int readIRDatabase(String &strIRDB)
     Serial.print("size: ");
     Serial.print(s);
 
-    strIRDB = dbFile.readString();
+    strAccessoryList = dbFile.readString();
 
-    LOG(strIRDB.c_str());
-    LOG("============readIRDatabase End====================");
+    LOG(strAccessoryList.c_str());
+    LOG("============readAccessoryInfo End====================");
+    dbFile.close();
+
+    return s;
+    
+}
+
+bool writeIRRemoteDB(String &strDBInfo)
+{
+    LOG("============writeIRRemoteDB Start====================");
+    File dbFile = SPIFFS.open(ACC_LIST, "w");
+    if (!dbFile) {
+        LOG("Failed to open db file for writing");
+        return false;
+    }
+    LOG("\n");
+    LOG(strDBInfo);
+
+    if(dbFile.print(strDBInfo.c_str()))
+    {
+        LOG("write DB success!");
+    }
+    else
+    {
+        LOG("write DB failed!");
+    }
+
+    dbFile.close();
+    LOG("============writeIRRemoteDB End====================");
+    
+}
+
+int readIRRemoteDB(String &strDBInfo)
+{
+    LOG("============readIRRemoteDB Start====================");
+    File dbFile = SPIFFS.open(IR_DB, "r");
+    if (!dbFile) {
+        strDBInfo = "";
+        LOG("Failed to open db file for read");
+        return -1;
+    }
+    int s = dbFile.size();
+
+    Serial.print("size: ");
+    Serial.print(s);
+
+    strDBInfo = dbFile.readString();
+
+    LOG(strDBInfo.c_str());
+    LOG("============readIRRemoteDB End====================");
     dbFile.close();
 
     return s;

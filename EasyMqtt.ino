@@ -24,7 +24,7 @@ String getServiceByName(String strName,int index)
 
 // 如果是自定义设备的化，设备的信息会从网上下下来
 
-bool isCustomAccessory(Config &config)
+bool isCustomIRRemoteAccessory(Config &config)
 {
     if (config.strServiceName.equals(String("IRremote")))
     {
@@ -91,27 +91,57 @@ void initAccessory(Config &config)
 void loadCustomAccessory(String &strJsonAccInfo)
 {
     // 取得自定义Accessory的信息
-    int code = restClient.get("/",&strJsonAccInfo);
+    int code = restClient.get("/accessory",&strJsonAccInfo);
 
     if (code == 200)
     {   
         LOG("=================Download Success==================");
-        saveIRDatabase(strJsonAccInfo);
+        writeAccessoryInfo(strJsonAccInfo);
     }
     else
     {
         LOG("=================Download Failed==================");
         
-        strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"Thermostat\",\"service_name\":\"IRRemoteAC\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+        strJsonAccInfo = "[{\"name\": \"TVBoxSwitch\", 	\"service_name\": \"TVPowerSwitch\", 	\"service\": \"Switch\" }]";
         //strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
-        saveIRDatabase(strJsonAccInfo);
+        writeAccessoryInfo(strJsonAccInfo);
         /*
-        if (readIRDatabase(strJsonAccInfo) <0)
+        if (readAccessoryInfo(strJsonAccInfo) <0)
         {
             //strJsonAccInfo="[{\"name\":\"OtherAC\",\"service\":\"Thermostat\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
            strJsonAccInfo = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
            //strJsonAccInfo="[{\"name\":\"GreeAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
-           saveIRDatabase(strJsonAccInfo);
+           writeAccessoryInfo(strJsonAccInfo);
+        }
+        */
+    }
+}
+
+
+void loadIRDataBase(String &strJsonIRDataBase)
+{
+    // 取得自定义Accessory的信息
+    int code = restClient.get("/database",&strJsonIRDataBase);
+
+    if (code == 200)
+    {   
+        LOG("=================Download Success==================");
+        writeAccessoryInfo(strJsonIRDataBase);
+    }
+    else
+    {
+        LOG("=================Download Failed==================");
+        
+        strJsonIRDataBase = "[{\"name\":\"TVPowerSwitch\",\"service_name\":\"PowerSwitch\",\"service\":\"Switch\"}]";
+        //strJsonIRDataBase = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+        writeAccessoryInfo(strJsonIRDataBase);
+        /*
+        if (readAccessoryInfo(strJsonIRDataBase) <0)
+        {
+            //strJsonIRDataBase="[{\"name\":\"OtherAC\",\"service\":\"Thermostat\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           strJsonIRDataBase = "[{\"name\":\"GreeAc\",\"service\":\"IRRemoteAC\",\"service_name\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           //strJsonIRDataBase="[{\"name\":\"GreeAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
+           writeAccessoryInfo(strJsonIRDataBase);
         }
         */
     }
@@ -120,12 +150,15 @@ void loadCustomAccessory(String &strJsonAccInfo)
 void opAccessory(bool isAdd,Config & config)
 {
     // 判断是否是自定义数据
-    if (isCustomAccessory(config))
+    if (isCustomIRRemoteAccessory(config))
     {
         StaticJsonBuffer<1024> staticJsonBuffer;
         
         String strJsonAccInfo;
         loadCustomAccessory(strJsonAccInfo);
+
+        String strJsonIRDB;
+        loadIRDataBase(strJsonIRDB);
 
         JsonArray& arrayAccessory = staticJsonBuffer.parseArray(strJsonAccInfo.c_str());
 
@@ -330,13 +363,19 @@ void recv(char* topic, byte* payload, unsigned int length)
         Serial.print("homebrige ==>Set: ");
         LOG(strJsondata);
         
-        if (isCustomAccessory(config))
+        if (isCustomIRRemoteAccessory(config))
         {
+            // 根据功能调用不同函数
+            // 如果是空调
             if (String("IRRemoteAC").equals(json["service_name"].asString()))
             {
                 sendAC_CMD(json["name"].asString(),json["characteristic"].asString(),json["value"].as<int>());
             }
-            
+            if (String("TVPowerSwitch").equals(json["service_name"].asString()))
+            {
+                sendTVPower_CMD(json);
+                //sendTV_CMD(JsonObject& json);
+            }
         }
         else
         {
@@ -377,7 +416,7 @@ void recv(char* topic, byte* payload, unsigned int length)
     else if(strTopic == String(config.strTopicPrefix + "/from/IR/info"))
     {
         LOG(strJsondata);
-        saveIRDatabase(strJsondata);
+        writeAccessoryInfo(strJsondata);
         LOG("homebrige ==>/from/IR: ");  
     }
     else
@@ -398,7 +437,7 @@ void send(String topic,String data)
 int searchRawData(String &strAccName,String &strFeature, JsonArray &rawData)
 {
     String strJson;
-    if (readIRDatabase(strJson) < 0)
+    if (readAccessoryInfo(strJson) < 0)
     {
         strJson = "[{\"name\":\"OtherAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[1,3,4,5,6,7,8,9,0,1],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]},{\"name\":\"GreeAC\",\"service\":\"Thermostat\",\"feature\":[{\"name\":\"mode_off\",\"rawData\":[2,3,4,5,6,7,2,4,5,6,7,3],\"len\":100},{\"name\":\"mode_heat\",\"rawData\":[],\"len\":100}]}]";
     }
