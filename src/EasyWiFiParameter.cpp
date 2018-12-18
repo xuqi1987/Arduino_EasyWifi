@@ -1,3 +1,5 @@
+#include "EasyWiFiParameter.h"
+
 EasyWifiParameter::EasyWifiParameter(const char *custom) {
   _id = NULL;
   _placeholder = NULL;

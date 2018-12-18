@@ -1,8 +1,15 @@
 #include "EasyWifi.h"
 
 EasyWifi::EasyWifi() {
+    // 用于存放自定义参数
     _max_params = WIFI_MANAGER_MAX_PARAMS;
     _params = (EasyWifiParameter**)malloc(_max_params * sizeof(EasyWifiParameter*));
+    
+    // 设置作为Ap的时候的ip地址
+    setAPStaticIPConfig(IPAddress(192,168,1,1),IPAddress(192,168,1,1),IPAddress(255,255,255,0));
+
+    // 设置自动连接超时20秒
+    setConnectTimeout(20);
 }
 
 EasyWifi::~EasyWifi()
@@ -14,35 +21,36 @@ EasyWifi::~EasyWifi()
     }
 }
 
-bool EasyWifi::addParameter(EasyWifiParameter *p) {
-  if(_paramsCount + 1 > _max_params)
-  {
-    // rezise the params array
-    _max_params += WIFI_MANAGER_MAX_PARAMS;
-    LOGD(F("Increasing _max_params to:"));
-    LOGD(_max_params);
-    EasyWifiParameter** new_params = (EasyWifiParameter**)realloc(_params, _max_params * sizeof(EasyWifiParameter*));
-    if (new_params != NULL) {
-      _params = new_params;
-    } else {
-      LOGD(F("ERROR: failed to realloc params, size not increased!"));
-      return false;
-    }
-  }
-
-  _params[_paramsCount] = p;
-  _paramsCount++;
-  LOGD(F("Adding parameter"));
-  LOGD(p->getID());
-  return true;
+boolean EasyWifi::autoConnect() {
+  // 使用芯片ID
+  String ssid = "EasyWifi_" + String(ESP.getChipId());
+  return autoConnect(ssid.c_str(), NULL);
 }
 
-void EasyWifi::setupConfigPortal() {
+boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
+  
+  LOGD(F("AutoConnect"));
+  // attempt to connect; should it fail, fall back to AP
+  WiFi.mode(WIFI_STA);
+
+  // 尝试自动连接
+  if (connectWifi("", "") == WL_CONNECTED)   {
+    LOGD(F("IP Address:"));
+    // 连接成功，打印当前的IP
+    LOGD(WiFi.localIP());
+    //connected
+    return true;
+  }
+  // 自动连接失败，显示配置页面
+  return startWebConfig(apName, apPassword);
+}
+
+void EasyWifi::setupWebConfig() {
   dnsServer.reset(new DNSServer());
   server.reset(new ESP8266WebServer(80));
 
   LOGD(F(""));
-  _configPortalStart = millis();
+  _webConfigStart = millis();
 
   LOGD(F("Configuring access point... "));
   LOGD(_apName);
@@ -89,42 +97,47 @@ void EasyWifi::setupConfigPortal() {
   LOGD(F("HTTP server started"));
 }
 
-boolean EasyWifi::autoConnect() {
-  // 使用芯片ID
-  String ssid = "EasyWifi_" + String(ESP.getChipId());
-  return autoConnect(ssid.c_str(), NULL);
-}
 
-boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
-  
-  LOGD(F("AutoConnect"));
-  // attempt to connect; should it fail, fall back to AP
-  WiFi.mode(WIFI_STA);
-
-  if (connectWifi("", "") == WL_CONNECTED)   {
-    LOGD(F("IP Address:"));
-    LOGD(WiFi.localIP());
-    //connected
-    return true;
-  }
-
-  return startConfigPortal(apName, apPassword);
-}
-
-boolean EasyWifi::configPortalHasTimeout(){
-    if(_configPortalTimeout == 0 || wifi_softap_get_station_num() > 0){
-      _configPortalStart = millis(); // kludge, bump configportal start time to skew timeouts
+bool EasyWifi::addParameter(EasyWifiParameter *p) {
+  if(_paramsCount + 1 > _max_params)
+  {
+    // rezise the params array
+    _max_params += WIFI_MANAGER_MAX_PARAMS;
+    LOGD(F("Increasing _max_params to:"));
+    LOGD(_max_params);
+    EasyWifiParameter** new_params = (EasyWifiParameter**)realloc(_params, _max_params * sizeof(EasyWifiParameter*));
+    if (new_params != NULL) {
+      _params = new_params;
+    } else {
+      LOGD(F("ERROR: failed to realloc params, size not increased!"));
       return false;
     }
-    return (millis() > _configPortalStart + _configPortalTimeout);
+  }
+
+  _params[_paramsCount] = p;
+  _paramsCount++;
+  LOGD(F("Adding parameter"));
+  LOGD(p->getID());
+  return true;
 }
 
-boolean EasyWifi::startConfigPortal() {
+
+
+
+boolean EasyWifi::webConfigHasTimeout(){
+    if(_webConfigTimeout == 0 || wifi_softap_get_station_num() > 0){
+      _webConfigStart = millis(); // kludge, bump webConfig start time to skew timeouts
+      return false;
+    }
+    return (millis() > _webConfigStart + _webConfigTimeout);
+}
+
+boolean EasyWifi::startWebConfig() {
   String ssid = "ESP" + String(ESP.getChipId());
-  return startConfigPortal(ssid.c_str(), NULL);
+  return startWebConfig(ssid.c_str(), NULL);
 }
 
-boolean  EasyWifi::startConfigPortal(char const *apName, char const *apPassword) {
+boolean  EasyWifi::startWebConfig(char const *apName, char const *apPassword) {
   
   if(!WiFi.isConnected()){
     WiFi.persistent(false);
@@ -139,22 +152,22 @@ boolean  EasyWifi::startConfigPortal(char const *apName, char const *apPassword)
     LOGD(F("SET AP STA"));
   }
 
-
   _apName = apName;
   _apPassword = apPassword;
 
   //notify we entered AP mode
   if ( _apcallback != NULL) {
+    LOGD(F("ap_callback"));
     _apcallback(this);
   }
-
+  
   connect = false;
-  setupConfigPortal();
+  setupWebConfig();
 
   while(1){
 
     // check if timeout
-    if(configPortalHasTimeout()) break;
+    if(webConfigHasTimeout()) break;
 
     //DNS
     dnsServer->processNextRequest();
@@ -204,12 +217,6 @@ boolean  EasyWifi::startConfigPortal(char const *apName, char const *apPassword)
 int EasyWifi::connectWifi(String ssid, String pass) {
   LOGD(F("Connecting as wifi client..."));
 
-  // check if we've got static_ip settings, if we do, use those.
-  if (_sta_static_ip) {
-    LOGD(F("Custom STA IP/GW/Subnet"));
-    WiFi.config(_sta_static_ip, _sta_static_gw, _sta_static_sn);
-    LOGD(WiFi.localIP());
-  }
   //fix for auto connect racing issue
   if (WiFi.status() == WL_CONNECTED) {
     LOGD(F("Already connected. Bailing out."));
@@ -235,14 +242,6 @@ int EasyWifi::connectWifi(String ssid, String pass) {
   int connRes = waitForConnectResult();
   LOGD ("Connection result: ");
   LOGD ( connRes );
-  //not connected, WPS enabled, no pass - first attempt
-  #ifdef NO_EXTRA_4K_HEAP
-  if (_tryWPS && connRes != WL_CONNECTED && pass == "") {
-    startWPS();
-    //should be connected at the end of WPS
-    connRes = waitForConnectResult();
-  }
-  #endif
   return connRes;
 }
 
@@ -260,8 +259,13 @@ uint8_t EasyWifi::waitForConnectResult() {
         keepConnecting = false;
         LOGD (F("Connection timed out"));
       }
-      if (status == WL_CONNECTED || status == WL_CONNECT_FAILED) {
+      if (status == WL_CONNECTED ) {
         keepConnecting = false;
+        LOGD (F("Connection OK"));
+      }
+      if (status == WL_CONNECT_FAILED) {
+        keepConnecting = false;
+        LOGD (F("Connection NG"));       
       }
       delay(100);
     }
@@ -295,7 +299,7 @@ void EasyWifi::startWPS() {
   return _pass;
   }
 */
-String EasyWifi::getConfigPortalSSID() {
+String EasyWifi::getwebConfigSSID() {
   return _apName;
 }
 
@@ -306,11 +310,11 @@ void EasyWifi::resetSettings() {
   //delay(200);
 }
 void EasyWifi::setTimeout(unsigned long seconds) {
-  setConfigPortalTimeout(seconds);
+  setwebConfigTimeout(seconds);
 }
 
-void EasyWifi::setConfigPortalTimeout(unsigned long seconds) {
-  _configPortalTimeout = seconds * 1000;
+void EasyWifi::setwebConfigTimeout(unsigned long seconds) {
+  _webConfigTimeout = seconds * 1000;
 }
 
 void EasyWifi::setConnectTimeout(unsigned long seconds) {
@@ -325,12 +329,6 @@ void EasyWifi::setAPStaticIPConfig(IPAddress ip, IPAddress gw, IPAddress sn) {
   _ap_static_ip = ip;
   _ap_static_gw = gw;
   _ap_static_sn = sn;
-}
-
-void EasyWifi::setSTAStaticIPConfig(IPAddress ip, IPAddress gw, IPAddress sn) {
-  _sta_static_ip = ip;
-  _sta_static_gw = gw;
-  _sta_static_sn = sn;
 }
 
 void EasyWifi::setMinimumSignalQuality(int quality) {
@@ -478,38 +476,6 @@ void EasyWifi::handleWifi(boolean scan) {
     page += "<br/>";
   }
 
-  if (_sta_static_ip) {
-
-    String item = FPSTR(HTTP_FORM_PARAM);
-    item.replace("{i}", "ip");
-    item.replace("{n}", "ip");
-    item.replace("{p}", "Static IP");
-    item.replace("{l}", "15");
-    item.replace("{v}", _sta_static_ip.toString());
-
-    page += item;
-
-    item = FPSTR(HTTP_FORM_PARAM);
-    item.replace("{i}", "gw");
-    item.replace("{n}", "gw");
-    item.replace("{p}", "Static Gateway");
-    item.replace("{l}", "15");
-    item.replace("{v}", _sta_static_gw.toString());
-
-    page += item;
-
-    item = FPSTR(HTTP_FORM_PARAM);
-    item.replace("{i}", "sn");
-    item.replace("{n}", "sn");
-    item.replace("{p}", "Subnet");
-    item.replace("{l}", "15");
-    item.replace("{v}", _sta_static_sn.toString());
-
-    page += item;
-
-    page += "<br/>";
-  }
-
   page += FPSTR(HTTP_FORM_END);
   page += FPSTR(HTTP_SCAN_LINK);
 
@@ -542,26 +508,6 @@ void EasyWifi::handleWifiSave() {
     LOGD(F("Parameter"));
     LOGD(_params[i]->getID());
     LOGD(value);
-  }
-
-  if (server->arg("ip") != "") {
-    LOGD(F("static ip"));
-    LOGD(server->arg("ip"));
-    //_sta_static_ip.fromString(server->arg("ip"));
-    String ip = server->arg("ip");
-    optionalIPFromString(&_sta_static_ip, ip.c_str());
-  }
-  if (server->arg("gw") != "") {
-    LOGD(F("static gateway"));
-    LOGD(server->arg("gw"));
-    String gw = server->arg("gw");
-    optionalIPFromString(&_sta_static_gw, gw.c_str());
-  }
-  if (server->arg("sn") != "") {
-    LOGD(F("static netmask"));
-    LOGD(server->arg("sn"));
-    String sn = server->arg("sn");
-    optionalIPFromString(&_sta_static_sn, sn.c_str());
   }
 
   String page = FPSTR(HTTP_HEAD);
@@ -700,12 +646,10 @@ void EasyWifi::setRemoveDuplicateAPs(boolean removeDuplicates) {
   _removeDuplicateAPs = removeDuplicates;
 }
 
-
-
 template <typename Generic>
 void EasyWifi::LOGD(Generic text) {
   if (_debug) {
-    Serial.print("*WM: ");
+    Serial.print("LOGD: ");
     Serial.println(text);
   }
 }

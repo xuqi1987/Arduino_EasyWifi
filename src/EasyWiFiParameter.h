@@ -1,6 +1,11 @@
 #ifndef EasyWifiParameter_h
 #define EasyWifiParameter_h
 
+#include <memory>
+
+extern "C" {
+  #include "user_interface.h"
+}
 
 class EasyWifiParameter {
   public:
