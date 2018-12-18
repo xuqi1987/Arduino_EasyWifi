@@ -20,7 +20,7 @@ getwebConfigSSID KEYWORD2
 resetSettings	KEYWORD2
 setwebConfigTimeout	KEYWORD2
 setConnectTimeout KEYWORD2
-setDebugOutput	KEYWORD2
+setDebug	KEYWORD2
 setMinimumSignalQuality KEYWORD2
 setAPStaticIPConfig	KEYWORD2
 setSTAStaticIPConfig KEYWORD2

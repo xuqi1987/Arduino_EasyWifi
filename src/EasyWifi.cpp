@@ -327,7 +327,7 @@ void EasyWifi::setConnectTimeout(unsigned long seconds) {
   _connectTimeout = seconds * 1000;
 }
 
-void EasyWifi::setDebugOutput(boolean debug) {
+void EasyWifi::setDebug(boolean debug) {
   _debug = debug;
 }
 
