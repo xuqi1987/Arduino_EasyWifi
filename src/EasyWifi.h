@@ -19,7 +19,7 @@ class EasyWifi
     EasyWifi();
     ~EasyWifi();
     
-    // 尝试用存的wifi名字和密码去连接
+    // 先尝试连接，如果无法连接，则启动Web配置页，apName为热点名称
     boolean       autoConnect();
     boolean       autoConnect(char const *apName, char const *apPassword = NULL);
 
@@ -93,6 +93,10 @@ class EasyWifi
 
     template <typename Generic>
     void          LOGD(Generic text);
+
+
+    template <typename Generic>
+    void          LOG(Generic text);
 
     template <class T>
     auto optionalIPFromString(T *obj, const char *s) -> decltype(  obj->fromString(s)  ) {

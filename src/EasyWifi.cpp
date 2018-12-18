@@ -35,7 +35,7 @@ boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
 
   // 尝试自动连接
   if (connectWifi("", "") == WL_CONNECTED)   {
-    LOGD(F("IP Address:"));
+    LOG(F("IP Address:"));
     // 连接成功，打印当前的IP
     LOGD(WiFi.localIP());
     //connected
@@ -45,27 +45,110 @@ boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
   return startWebConfig(apName, apPassword);
 }
 
+boolean EasyWifi::startWebConfig() {
+  String ssid = "EasyWifi_" + String(ESP.getChipId());
+  return startWebConfig(ssid.c_str(), NULL);
+}
+
+boolean  EasyWifi::startWebConfig(char const *apName, char const *apPassword) {
+  
+  if(!WiFi.isConnected()){
+    WiFi.persistent(false);
+    // disconnect sta, start ap
+    WiFi.disconnect(); //  this alone is not enough to stop the autoconnecter
+    WiFi.mode(WIFI_AP);
+    WiFi.persistent(true);
+  } 
+  else {
+    //setup AP
+    WiFi.mode(WIFI_AP_STA);
+    LOGD(F("SET AP STA"));
+  }
+
+  _apName = apName;
+  _apPassword = apPassword;
+
+  //notify we entered AP mode
+  if ( _apcallback != NULL) {
+    LOGD(F("ap_callback"));
+    _apcallback(this);
+  }
+
+  connect = false;
+  setupWebConfig();
+
+  while(1){
+
+    // check if timeout
+    if(webConfigHasTimeout()) break;
+
+    //DNS
+    dnsServer->processNextRequest();
+    //HTTP
+    server->handleClient();
+
+
+    if (connect) {
+      connect = false;
+      delay(2000);
+      LOGD(F("Connecting to new AP"));
+
+      // using user-provided  _ssid, _pass in place of system-stored ssid and pass
+      if (connectWifi(_ssid, _pass) != WL_CONNECTED) {
+        LOGD(F("Failed to connect."));
+      } else {
+        //connected
+        WiFi.mode(WIFI_STA);
+        //notify that configuration has changed and any optional parameters should be saved
+        if ( _savecallback != NULL) {
+          //todo: check if any custom parameters actually exist, and check if they really changed maybe
+          _savecallback();
+        }
+        break;
+      }
+
+      if (_shouldBreakAfterConfig) {
+        //flag set to exit after config after trying to connect
+        //notify that configuration has changed and any optional parameters should be saved
+        if ( _savecallback != NULL) {
+          //todo: check if any custom parameters actually exist, and check if they really changed maybe
+          _savecallback();
+        }
+        break;
+      }
+    }
+    yield();
+  }
+
+  server.reset();
+  dnsServer.reset();
+
+  return  WiFi.status() == WL_CONNECTED;
+}
+
 void EasyWifi::setupWebConfig() {
   dnsServer.reset(new DNSServer());
   server.reset(new ESP8266WebServer(80));
 
-  LOGD(F(""));
   _webConfigStart = millis();
 
-  LOGD(F("Configuring access point... "));
-  LOGD(_apName);
+  LOG(F("Configuring access point... "));
+  LOG(F("AP_Name:"));
+  LOG(_apName);
+
   if (_apPassword != NULL) {
     if (strlen(_apPassword) < 8 || strlen(_apPassword) > 63) {
       // fail passphrase to short or long!
       LOGD(F("Invalid AccessPoint password. Ignoring"));
       _apPassword = NULL;
     }
+    LOG(F(" AP_Password:"));
     LOGD(_apPassword);
   }
 
   //optional soft ip config
   if (_ap_static_ip) {
-    LOGD(F("Custom AP IP/GW/Subnet"));
+    LOGD(F("\nCustom AP IP/GW/Subnet"));
     WiFi.softAPConfig(_ap_static_ip, _ap_static_gw, _ap_static_sn);
   }
 
@@ -76,7 +159,7 @@ void EasyWifi::setupWebConfig() {
   }
 
   delay(500); // Without delay I've seen the IP address blank
-  LOGD(F("AP IP address: "));
+  LOG(F("AP IP address: "));
   LOGD(WiFi.softAPIP());
 
   /* Setup the DNS server redirecting all the domains to the apIP */
@@ -132,88 +215,6 @@ boolean EasyWifi::webConfigHasTimeout(){
     return (millis() > _webConfigStart + _webConfigTimeout);
 }
 
-boolean EasyWifi::startWebConfig() {
-  String ssid = "ESP" + String(ESP.getChipId());
-  return startWebConfig(ssid.c_str(), NULL);
-}
-
-boolean  EasyWifi::startWebConfig(char const *apName, char const *apPassword) {
-  
-  if(!WiFi.isConnected()){
-    WiFi.persistent(false);
-    // disconnect sta, start ap
-    WiFi.disconnect(); //  this alone is not enough to stop the autoconnecter
-    WiFi.mode(WIFI_AP);
-    WiFi.persistent(true);
-  } 
-  else {
-    //setup AP
-    WiFi.mode(WIFI_AP_STA);
-    LOGD(F("SET AP STA"));
-  }
-
-  _apName = apName;
-  _apPassword = apPassword;
-
-  //notify we entered AP mode
-  if ( _apcallback != NULL) {
-    LOGD(F("ap_callback"));
-    _apcallback(this);
-  }
-  
-  connect = false;
-  setupWebConfig();
-
-  while(1){
-
-    // check if timeout
-    if(webConfigHasTimeout()) break;
-
-    //DNS
-    dnsServer->processNextRequest();
-    //HTTP
-    server->handleClient();
-
-
-    if (connect) {
-      connect = false;
-      delay(2000);
-      LOGD(F("Connecting to new AP"));
-
-      // using user-provided  _ssid, _pass in place of system-stored ssid and pass
-      if (connectWifi(_ssid, _pass) != WL_CONNECTED) {
-        LOGD(F("Failed to connect."));
-      } else {
-        //connected
-        WiFi.mode(WIFI_STA);
-        //notify that configuration has changed and any optional parameters should be saved
-        if ( _savecallback != NULL) {
-          //todo: check if any custom parameters actually exist, and check if they really changed maybe
-          _savecallback();
-        }
-        break;
-      }
-
-      if (_shouldBreakAfterConfig) {
-        //flag set to exit after config after trying to connect
-        //notify that configuration has changed and any optional parameters should be saved
-        if ( _savecallback != NULL) {
-          //todo: check if any custom parameters actually exist, and check if they really changed maybe
-          _savecallback();
-        }
-        break;
-      }
-    }
-    yield();
-  }
-
-  server.reset();
-  dnsServer.reset();
-
-  return  WiFi.status() == WL_CONNECTED;
-}
-
-
 int EasyWifi::connectWifi(String ssid, String pass) {
   LOGD(F("Connecting as wifi client..."));
 
@@ -240,8 +241,9 @@ int EasyWifi::connectWifi(String ssid, String pass) {
   }
 
   int connRes = waitForConnectResult();
-  LOGD ("Connection result: ");
-  LOGD ( connRes );
+
+  LOG("Connection result: ");
+  LOGD(connRes );
   return connRes;
 }
 
@@ -249,23 +251,27 @@ uint8_t EasyWifi::waitForConnectResult() {
   if (_connectTimeout == 0) {
     return WiFi.waitForConnectResult();
   } else {
+    LOG(F("ssid:"));
+    LOGD(WiFi.SSID());
     LOGD (F("Waiting for connection result with time out"));
+    
     unsigned long start = millis();
     boolean keepConnecting = true;
     uint8_t status;
     while (keepConnecting) {
       status = WiFi.status();
+      LOG(F("."));
       if (millis() > start + _connectTimeout) {
         keepConnecting = false;
-        LOGD (F("Connection timed out"));
+        LOGD (F("\nConnection timed out"));
       }
       if (status == WL_CONNECTED ) {
         keepConnecting = false;
-        LOGD (F("Connection OK"));
+        LOGD (F("\nConnection OK"));
       }
       if (status == WL_CONNECT_FAILED) {
         keepConnecting = false;
-        LOGD (F("Connection NG"));       
+        LOGD (F("\nConnection NG"));       
       }
       delay(100);
     }
@@ -304,8 +310,8 @@ String EasyWifi::getwebConfigSSID() {
 }
 
 void EasyWifi::resetSettings() {
-  LOGD(F("settings invalidated"));
   LOGD(F("THIS MAY CAUSE AP NOT TO START UP PROPERLY. YOU NEED TO COMMENT IT OUT AFTER ERASING THE DATA."));
+  LOGD(F("resetSettings"));
   WiFi.disconnect(true);
   //delay(200);
 }
@@ -649,8 +655,14 @@ void EasyWifi::setRemoveDuplicateAPs(boolean removeDuplicates) {
 template <typename Generic>
 void EasyWifi::LOGD(Generic text) {
   if (_debug) {
-    Serial.print("LOGD: ");
     Serial.println(text);
+  }
+}
+
+template <typename Generic>
+void EasyWifi::LOG(Generic text) {
+  if (_debug) {
+    Serial.print(text);
   }
 }
 
