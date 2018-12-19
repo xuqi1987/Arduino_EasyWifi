@@ -4,12 +4,12 @@
 #include <memory>
 
 extern "C" {
-  #include "user_interface.h"
+#include "user_interface.h"
 }
 
 class EasyWifiParameter {
-  public:
-    /** 
+public:
+    /**
         Create custom parameters that can be added to the EasyWifi setup web page
         @id is used for HTTP queries and must not contain spaces nor other special characters
     */
@@ -24,7 +24,7 @@ class EasyWifiParameter {
     int         getValueLength();
     const char *getCustomHTML();
 
-  private:
+private:
     const char *_id;
     const char *_placeholder;
     char       *_value;

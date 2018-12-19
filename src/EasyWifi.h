@@ -15,7 +15,7 @@
 
 class EasyWifi
 {
-  public:
+public:
     EasyWifi();
     ~EasyWifi();
     
@@ -61,7 +61,7 @@ class EasyWifi
     //if this is true, remove duplicated Access Points - defaut true
     void          setRemoveDuplicateAPs(boolean removeDuplicates);
 
-  private:
+private:
     std::unique_ptr<DNSServer>        dnsServer;
     std::unique_ptr<ESP8266WebServer> server;
 
@@ -100,11 +100,11 @@ class EasyWifi
 
     template <class T>
     auto optionalIPFromString(T *obj, const char *s) -> decltype(  obj->fromString(s)  ) {
-      return  obj->fromString(s);
+        return  obj->fromString(s);
     }
     auto optionalIPFromString(...) -> bool {
-      LOGD("NO fromString METHOD ON IPAddress, you need ESP8266 core 2.1.0 or newer for Custom IP configuration to work.");
-      return false;
+        LOGD("NO fromString METHOD ON IPAddress, you need ESP8266 core 2.1.0 or newer for Custom IP configuration to work.");
+        return false;
     }
 
 
@@ -138,7 +138,7 @@ class EasyWifi
     int                    _max_params;
     EasyWifiParameter** _params;
 
-  
+
 };
 
 #endif
