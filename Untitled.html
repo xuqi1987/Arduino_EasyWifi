@@ -1,0 +1,108 @@
+<!-- HTTP_HEAD --><!DOCTYPE html>
+<html lang="zh">
+ <head> 
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" /> 
+  <title>{v}</title> 
+  <!-- /HTTP_HEAD --> 
+  <!-- HTTP_STYLE --> 
+  <link rel="stylesheet" href="css/style.css" media="screen" type="text/css" /> 
+  <!-- /HTTP_STYLE --> 
+  <!-- HTTP_SCRIPT --> 
+  <script language="JavaScript">
+function GetArgsFromHref(sHref, sArgName)
+{
+      var args    = sHref.split("?");
+      var retval = "";
+    
+      if(args[0] == sHref) /*参数为空*/
+      {
+           return retval; /*无需做任何处理*/
+      }  
+      var str = args[1];
+      args = str.split("&");
+      for(var i = 0; i < args.length; i ++)
+      {
+          str = args[i];
+          var arg = str.split("=");
+          if(arg.length <= 1) continue;
+          if(arg[0] == sArgName) retval = arg[1]; 
+      }
+      return retval;
+}
+
+function load_param()
+{
+	var url = window.location.href;
+	document.getElementById('wifi_name').value = GetArgsFromHref(url,'wifi_name');
+	document.getElementById('wifi_pass').value = GetArgsFromHref(url,'wifi_pass');
+	document.getElementById('dev_name').value = GetArgsFromHref(url,'dev_name');
+	document.getElementById('ap_name').value = GetArgsFromHref(url,'ap_name');
+	document.getElementById('server_name').value = GetArgsFromHref(url,'server_name');
+	document.getElementById('topic_prefix').value = GetArgsFromHref(url,'topic_prefix');
+	document.getElementById('service_name').value = GetArgsFromHref(url,'service_name');
+}
+
+function c(l){document.getElementById('ap_name').value=l.value; document.getElementById('wifi_pass').focus();}
+
+</script> 
+  <!-- /HTTP_SCRIPT --> 
+  <!-- HTTP_HEAD_END --> 
+ </head> 
+ <!-- <body onload="load_param()"> --> 
+ <body> 
+  <div class="container"> 
+   <!-- /HTTP_HEAD_END --> 
+   <div id="contact"> 
+    <h3>设置{v}</h3> 
+    <h4>请选择需要连接的热点:</h4> 
+    <!-- AP_LIST --> 
+    <select id="ap_list" name="ap_list" onchange="c(this)"> 
+	    <option value=" ss ">开关 100%</option> 
+	    <option value=" 22   ">开关2 90%</option> 
+	</select> 
+	<!-- /AP_LIST --> 
+	
+	
+    <form action="setting" method="post"> 
+	  
+     <fieldset> 
+      <input id="ap_name" placeholder="WiFi名字" type="text" name="ap_name" tabindex="1" required="" autofocus="" /> 
+     </fieldset> 
+     <fieldset> 
+      <input id="wifi_pass" placeholder="WiFi密码" type="text" name="wifi_pass" tabindex="2" required="" /> 
+     </fieldset> 
+     <fieldset> 
+      <input id="server_name" placeholder="服务器地址" type="text" name="server_name" tabindex="3" required="" /> 
+     </fieldset> 
+     <fieldset> 
+      <input id="topic_prefix" placeholder="主题前缀" type="text" name="topic_prefix" tabindex="4" required="" /> 
+     </fieldset> 
+     <fieldset> 
+	<!-- Service_List -->      
+	<select id="service_name" name="service_name"> 
+		<option value="Switch">开关</option>
+		<option value="Lightbulb">灯泡</option> 
+		<option value="Ws2812b-Lightbulb">ws2812b彩灯</option>
+		<option value="DHT11">DHT11温湿度</option> 
+		<option value="IRremote">红外</option> 
+		<option value="OccupancySensor">人体传感器</option>
+		<option value="AirQualitySensor">空气质量传感器</option>
+		<option value="Fan">风扇</option> 
+		<option value="HumiditySensor">湿度</option>
+		<option value="LightSensor">光照传感器</option>
+		<option value="TemperatureSensor">温度</option>
+	</select>
+	<!-- /Service_List -->  
+	 
+     </fieldset> 
+     <fieldset> 
+      <button name="submit" type="submit" id="contact-submit" data-submit="...Sending">设置并重启</button> 
+     </fieldset> 
+    </form> 
+   </div> 
+   <!-- HTTP_END --> 
+  </div> 
+  <!-- /HTTP_END -->  
+ </body>
+</html>

@@ -13,6 +13,17 @@
 #define WIFI_MANAGER_MAX_PARAMS 10
 #endif
 
+#ifndef WIFI_LIST_MAX_ITEM
+#define WIFI_LIST_MAX_ITEM 10
+#endif
+
+typedef struct WifiItemInfo
+{
+    String ssid;
+    String rssiQ;
+    bool encryptionType;
+};
+
 class EasyWifi
 {
 public:
@@ -81,6 +92,7 @@ private:
     boolean       captivePortal();
     boolean       webConfigHasTimeout();
 
+    void          scan4getApList();
 
     //helpers
     int           getRSSIasQuality(int RSSI);
@@ -137,6 +149,9 @@ private:
 
     int                    _max_params;
     EasyWifiParameter** _params;
+
+    int           _wifiListCount           = 0;
+    WifiItemInfo _wifiList[WIFI_LIST_MAX_ITEM];
 
 
 };

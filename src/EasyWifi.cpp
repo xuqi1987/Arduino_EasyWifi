@@ -4,7 +4,7 @@ EasyWifi::EasyWifi() {
     // 用于存放自定义参数
     _max_params = WIFI_MANAGER_MAX_PARAMS;
     _params = (EasyWifiParameter**)malloc(_max_params * sizeof(EasyWifiParameter*));
-    
+  
     // 设置作为Ap的时候的ip地址
     setAPStaticIPConfig(IPAddress(192,168,1,1),IPAddress(192,168,1,1),IPAddress(255,255,255,0));
 
@@ -19,6 +19,11 @@ EasyWifi::~EasyWifi()
         LOGD(F("freeing allocated params!"));
         free(_params);
     }
+    if (_wifiList != NULL)
+    {
+        LOGD(F("freeing allocated _wifiList!"));
+        free(_wifiList);
+    }
 }
 
 boolean EasyWifi::autoConnect() {
@@ -32,6 +37,9 @@ boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
     LOGD(F("AutoConnect"));
     // attempt to connect; should it fail, fall back to AP
     WiFi.mode(WIFI_STA);
+    
+    //获取周边的的热点
+    scan4getApList();
 
     // 尝试自动连接
     if (connectWifi("", "") == WL_CONNECTED)   {
@@ -180,6 +188,80 @@ void EasyWifi::setupWebConfig() {
     LOGD(F("HTTP server started"));
 }
 
+void EasyWifi::scan4getApList() {
+
+    int n = WiFi.scanNetworks();
+    LOGD(F("Scan done"));
+    if (n == 0) {
+        LOGD(F("No networks found"));
+    } else {
+        //sort networks
+        int indices[n];
+        for (int i = 0; i < n; i++) {
+            indices[i] = i;
+        }
+        // old sort
+        for (int i = 0; i < n; i++) {
+            for (int j = i + 1; j < n; j++) {
+                if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+                    std::swap(indices[i], indices[j]);
+                }
+            }
+        }
+        // remove duplicates ( must be RSSI sorted )
+        if (_removeDuplicateAPs) {
+            String cssid;
+            for (int i = 0; i < n; i++) {
+                if (indices[i] == -1) continue;
+                cssid = WiFi.SSID(indices[i]);
+                for (int j = i + 1; j < n; j++) {
+                    if (cssid == WiFi.SSID(indices[j])) {
+                        LOGD("DUP AP: " + WiFi.SSID(indices[j]));
+                        indices[j] = -1; // set dup aps to index -1
+                    }
+                }
+            }
+        }
+        _wifiListCount = 0;
+        
+        //display networks in page
+        for (int i = 0; i < n; i++) {
+            if (indices[i] == -1) continue; // skip dups
+            int quality = getRSSIasQuality(WiFi.RSSI(indices[i]));
+
+            if (_wifiListCount < WIFI_LIST_MAX_ITEM ) {
+
+              if (_minimumQuality == -1 || _minimumQuality < quality) {
+                  String rssiQ;
+                  rssiQ += quality;
+
+                  _wifiList[_wifiListCount].ssid = WiFi.SSID(indices[i]);
+                  _wifiList[_wifiListCount].rssiQ = rssiQ;
+                
+                  if (WiFi.encryptionType(indices[i]) != ENC_TYPE_NONE) {
+                      _wifiList[_wifiListCount].encryptionType = true;
+                  } else {
+                      _wifiList[_wifiListCount].encryptionType = false;
+                  }
+                  _wifiListCount++;
+                  delay(0);
+              } else {
+                  LOGD(F("Skipping due to quality"));
+              }
+            }
+        }
+      
+    }
+
+    for (int k=0;k < _wifiListCount; k++)
+    {
+      LOG(k);
+      LOG(". ");
+      LOG(_wifiList[k].ssid);
+      LOG("   ");
+      LOGD(_wifiList[k].rssiQ);
+    }
+}
 
 bool EasyWifi::addParameter(EasyWifiParameter *p) {
     if(_paramsCount + 1 > _max_params)
