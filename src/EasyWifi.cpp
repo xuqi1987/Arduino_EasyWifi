@@ -8,8 +8,8 @@ EasyWifi::EasyWifi() {
     // 设置作为Ap的时候的ip地址
     setAPStaticIPConfig(IPAddress(192,168,1,1),IPAddress(192,168,1,1),IPAddress(255,255,255,0));
 
-    // 设置自动连接超时20秒
-    setConnectTimeout(20);
+    // 设置自动连接超时5秒
+    setConnectTimeout(5);
 }
 
 EasyWifi::~EasyWifi()
@@ -175,7 +175,10 @@ void EasyWifi::setupWebConfig() {
     dnsServer->start(DNS_PORT, "*", WiFi.softAPIP());
 
     /* Setup web pages: root, wifi config pages, SO captive portal detectors and not found. */
-    server->on(String(F("/")), std::bind(&EasyWifi::handleRoot, this));
+    //server->on(String(F("/")), std::bind(&EasyWifi::handleRoot, this));
+    server->on(String(F("/")), std::bind(&EasyWifi::hdRoot, this));
+    server->on(String(F("/save")), std::bind(&EasyWifi::hdWifiSave, this));
+
     server->on(String(F("/wifi")), std::bind(&EasyWifi::handleWifi, this, true));
     server->on(String(F("/0wifi")), std::bind(&EasyWifi::handleWifi, this, false));
     server->on(String(F("/wifisave")), std::bind(&EasyWifi::handleWifiSave, this));
@@ -427,6 +430,65 @@ void EasyWifi::setBreakAfterConfig(boolean shouldBreak) {
     _shouldBreakAfterConfig = shouldBreak;
 }
 
+void EasyWifi::hdRoot() {
+    LOGD(F("hdRoot"));
+    String page = FPSTR(_HTTP_HEAD);
+
+    page += FPSTR(_HTTP_SCRIPT);
+    page += FPSTR(_HTTP_STYLE);
+    page += _customHeadElement;
+    page += FPSTR(_HTTP_HEAD_END);
+
+    page.replace("{v}", _apName);
+
+    // 将扫描的AP加入到列表中
+    if (_wifiListCount > 0)
+    {
+      page += FPSTR(_HTTP_AP_LIST);
+      String item;
+
+      for (int i =0; i < _wifiListCount; i++)
+      {
+        item += FPSTR(_HTTP_AP_LIST_ITEM);
+        item.replace("{n}", _wifiList[i].ssid);
+        //item.replace("{p}", _wifiList[i].rssiQ);
+      }
+      page.replace("{i}",item.c_str());
+
+      page += FPSTR(_HTTP_FORM);
+      page.replace("{v}", _wifiList[0].ssid);
+    }
+    else
+    {
+        page += FPSTR(_HTTP_FORM);
+    }
+    
+    page += FPSTR(_HTTP_SERVER_LIST);
+    page += FPSTR(_HTTP_FORM_END);
+    page += FPSTR(_HTTP_END);
+    server->sendHeader("Content-Length", String(page.length()));
+    server->send(200, "text/html", page);
+}
+
+void EasyWifi::hdWifiSave(){
+    LOGD(F("hdWifiSave"));
+    String page = FPSTR(_HTTP_HEAD);
+
+    page += FPSTR(_HTTP_STYLE);
+    page += _customHeadElement;
+    page += FPSTR(_HTTP_HEAD_END);
+
+    page.replace("{v}", _apName);
+
+    page += FPSTR(_HTTP_END);
+    page += FPSTR(_HTTP_SCRIPT_RESET);
+    server->sendHeader("Content-Length", String(page.length()));
+    server->send(200, "text/html", page);
+
+    _ssid = server->arg("ap_name").c_str();
+    _pass = server->arg("wifi_pass").c_str();
+    connect = true;   
+}
 /** Handle root or redirect to captive portal */
 void EasyWifi::handleRoot() {
     LOGD(F("Handle root"));

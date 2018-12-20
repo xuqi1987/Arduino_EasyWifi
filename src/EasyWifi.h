@@ -7,7 +7,7 @@
 #include <memory>
 #include "template.h"
 #include "EasyWifiParameter.h"
-
+#include "WebStaticData.h"
 
 #ifndef WIFI_MANAGER_MAX_PARAMS
 #define WIFI_MANAGER_MAX_PARAMS 10
@@ -81,6 +81,9 @@ private:
 
     int           connectWifi(String ssid, String pass);
     uint8_t       waitForConnectResult();
+
+    void          hdRoot();
+    void          hdWifiSave();
 
     void          handleRoot();
     void          handleWifi(boolean scan);
