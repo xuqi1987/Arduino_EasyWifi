@@ -1,4 +1,4 @@
-#include "EasyWiFiParameter.h"
+#include "EasyWifi.h"
 
 EasyWifiParameter::EasyWifiParameter(const char *custom) {
     _id = NULL;
@@ -51,4 +51,14 @@ int EasyWifiParameter::getValueLength() {
 }
 const char* EasyWifiParameter::getCustomHTML() {
     return _customHTML;
+}
+
+template <typename Generic>
+void EasyWifiParameter::LOGD(Generic text) {
+        Serial.println(text);
+}
+
+template <typename Generic>
+void EasyWifiParameter::LOG(Generic text) {
+        Serial.print(text);
 }

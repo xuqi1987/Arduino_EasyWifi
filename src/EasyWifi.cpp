@@ -131,6 +131,12 @@ boolean  EasyWifi::startWebConfig(char const *apName, char const *apPassword) {
     server.reset();
     dnsServer.reset();
 
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        LOG(F("IP Address:"));
+        // 连接成功，打印当前的IP
+        LOGD(WiFi.localIP());
+    }
     return  WiFi.status() == WL_CONNECTED;
 }
 
@@ -266,7 +272,164 @@ void EasyWifi::scan4getApList() {
     }
 }
 
+bool EasyWifi::loadCustomParameter() {
+    LOG("\n\nloadCustomParameter :\n");
+    for(u8 i= 0; !SPIFFS.begin() && i < 50; i++)
+    {
+        LOGD("Failed to mount file system,wait 1000 ms retry...");
+        delay(1000);
+        if (i == 49)
+        {
+            return false;
+        }
+    }
+
+    File customConfigFile = SPIFFS.open("/config.json", "r");
+    if (customConfigFile) 
+    {
+        size_t size = customConfigFile.size();
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        customConfigFile.readBytes(buf.get(), size);
+        DynamicJsonBuffer jsonBuffer;
+
+        //parse
+        JsonObject& json = jsonBuffer.parseObject(buf.get());
+        
+        if(json.success())
+        {
+            customConfigFile.close();
+            SPIFFS.end();
+
+            // parse json to customConfig object
+            //get counter
+            int config_count = json["key-count"].as<signed int>();
+            //get key
+            String keyList = json["key-list"].as<String>();
+
+            LOG("key-count:");
+            LOGD(config_count);
+            LOG("key-list:");
+            LOGD(keyList);
+
+            for(int i=0;i<config_count;i++)
+            {
+                int index = keyList.indexOf(',');
+                String key = keyList.substring(0,index);
+
+                // _params[i] = keyList.substring(0,index);
+                keyList.replace(key+",","");
+
+                //get value
+                for(int j=0;j < _paramsCount; j++)
+                {            
+                    if (strcmp(key.c_str(),_params[j]->getID()) == 0 ) {
+                        String value = json[key].as<String>();
+                        int length = value.length();
+                        _params[j]->_length = length;
+                        strncpy(_params[j]->_value, value.c_str(),length);
+                        
+                        LOG(key);
+                        LOG(" ==> ");
+                        LOGD(value);
+                    }
+    
+                }
+            }
+
+            LOGD("============================================");
+            return true;
+        }
+        else
+        {
+            LOGD("json parse failed");
+            customConfigFile.close();
+            SPIFFS.end();
+            return false;
+        }
+    }
+    else
+    {
+        LOGD("open failed");
+        SPIFFS.end();
+        return false;
+    }
+
+}
+
+bool EasyWifi::saveCustomParameter() {
+
+    if (_paramsCount)
+    {
+        //make json data
+        DynamicJsonBuffer jsonBuffer;
+        JsonObject& json = jsonBuffer.createObject();
+        
+        String keyList = "";
+
+        for(int i=0; i < _paramsCount;i++)
+        {
+            json[_params[i]->getID()] = _params[i]->getValue();
+            
+            //append key list
+            keyList += _params[i]->getID();
+            keyList += ",";
+        }
+
+        //write list of key and counter to json
+        json["key-count"] = _paramsCount;
+        json["key-list"] = keyList;
+        LOGD("saveCustomParameter");
+        
+
+        for(u8 i= 0; !SPIFFS.begin() && i < 50; i++)
+        {
+            LOGD("Failed to mount file system,wait 1000 ms retry...");
+            delay(1000);
+            if (i == 49)
+            {
+                return false;
+            }
+        }
+
+        File configFile = SPIFFS.open("/config.json", "w");
+        if (!configFile) 
+        {
+            SPIFFS.end();
+            LOGD("open failed");
+            return false;
+        }
+        
+        json.printTo(configFile);
+        json.printTo(Serial);
+        configFile.close();
+        SPIFFS.end();
+        return true;
+
+    }
+    else
+    {
+        for(u8 i= 0; !SPIFFS.begin() && i < 50; i++)
+        {
+            LOGD("Failed to mount file system,wait 1000 ms retry...");
+            delay(1000);
+            if (i == 49)
+            {
+                return false;
+            }
+        }
+
+        if (SPIFFS.exists("/config.json")) 
+            SPIFFS.remove("/config.json");
+        SPIFFS.end();
+
+
+        return true;
+    }
+}
+
 bool EasyWifi::addParameter(EasyWifiParameter *p) {
+
     if(_paramsCount + 1 > _max_params)
     {
         // rezise the params array
@@ -284,8 +447,8 @@ bool EasyWifi::addParameter(EasyWifiParameter *p) {
 
     _params[_paramsCount] = p;
     _paramsCount++;
-    LOGD(F("Adding parameter"));
-    LOGD(p->getID());
+    //LOGD(F("Adding parameter"));
+    
     return true;
 }
 
@@ -451,7 +614,6 @@ void EasyWifi::hdRoot() {
       {
         item += FPSTR(_HTTP_AP_LIST_ITEM);
         item.replace("{n}", _wifiList[i].ssid);
-        //item.replace("{p}", _wifiList[i].rssiQ);
       }
       page.replace("{i}",item.c_str());
 
@@ -461,6 +623,26 @@ void EasyWifi::hdRoot() {
     else
     {
         page += FPSTR(_HTTP_FORM);
+    }
+
+        // add the extra parameters to the form
+    for (int i = 0; i < _paramsCount; i++) {
+        if (_params[i] == NULL) {
+            break;
+        }
+
+        String pitem = FPSTR(_HTTP_FORM_PARAM);
+        if (_params[i]->getID() != NULL) {
+            pitem.replace("{i}", _params[i]->getID());
+            pitem.replace("{n}", _params[i]->getID());
+            pitem.replace("{p}", _params[i]->getPlaceholder());
+            pitem.replace("{v}", _params[i]->getValue());
+            pitem.replace("{c}", _params[i]->getCustomHTML());
+        } else {
+            pitem = _params[i]->getCustomHTML();
+        }
+
+        page += pitem;
     }
     
     page += FPSTR(_HTTP_SERVER_LIST);
@@ -487,6 +669,24 @@ void EasyWifi::hdWifiSave(){
 
     _ssid = server->arg("ap_name").c_str();
     _pass = server->arg("wifi_pass").c_str();
+    
+    //parameters
+    for (int i = 0; i < _paramsCount; i++) {
+        if (_params[i] == NULL) {
+            break;
+        }
+        //read parameter
+        String value = server->arg(_params[i]->getID()).c_str();
+        //store it in array
+        value.toCharArray(_params[i]->_value, _params[i]->_length + 1);
+        LOGD(F("Parameter"));
+        LOGD(_params[i]->getID());
+        LOGD(value);
+    }
+    
+    // LOGD(server->arg("service_name").c_str());
+    // LOGD(server->arg("topic_prefix").c_str());
+    // LOGD(server->arg("server_name").c_str());
     connect = true;   
 }
 /** Handle root or redirect to captive portal */
@@ -600,7 +800,7 @@ void EasyWifi::handleWifi(boolean scan) {
     }
 
     page += FPSTR(HTTP_FORM_START);
-    char parLength[5];
+    
     // add the extra parameters to the form
     for (int i = 0; i < _paramsCount; i++) {
         if (_params[i] == NULL) {
@@ -612,8 +812,6 @@ void EasyWifi::handleWifi(boolean scan) {
             pitem.replace("{i}", _params[i]->getID());
             pitem.replace("{n}", _params[i]->getID());
             pitem.replace("{p}", _params[i]->getPlaceholder());
-            snprintf(parLength, 5, "%d", _params[i]->getValueLength());
-            pitem.replace("{l}", parLength);
             pitem.replace("{v}", _params[i]->getValue());
             pitem.replace("{c}", _params[i]->getCustomHTML());
         } else {

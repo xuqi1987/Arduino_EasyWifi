@@ -6,8 +6,14 @@
 #include <DNSServer.h>
 #include <memory>
 #include "template.h"
-#include "EasyWifiParameter.h"
 #include "WebStaticData.h"
+#include <ArduinoJson.h>
+#include <FS.h>
+
+extern "C" {
+#include "user_interface.h"
+}
+
 
 #ifndef WIFI_MANAGER_MAX_PARAMS
 #define WIFI_MANAGER_MAX_PARAMS 10
@@ -22,6 +28,46 @@ typedef struct WifiItemInfo
     String ssid;
     String rssiQ;
     bool encryptionType;
+};
+
+
+
+class EasyWifiParameter {
+public:
+    /**
+        Create custom parameters that can be added to the EasyWifi setup web page
+        @id is used for HTTP queries and must not contain spaces nor other special characters
+    */
+    EasyWifiParameter(const char *custom);
+    EasyWifiParameter(const char *id, const char *placeholder, const char *defaultValue, int length);
+    EasyWifiParameter(const char *id, const char *placeholder, const char *defaultValue, int length, const char *custom);
+    ~EasyWifiParameter();
+
+    const char *getID();
+    const char *getValue();
+    const char *getPlaceholder();
+    int         getValueLength();
+    const char *getCustomHTML();
+
+private:
+    const char *_id;
+    const char *_placeholder;
+    char       *_value;
+    int         _length;
+    const char *_customHTML;
+
+    void init(const char *id, const char *placeholder, const char *defaultValue, int length, const char *custom);
+
+
+    template <typename Generic>
+    void          LOGD(Generic text);
+
+
+    template <typename Generic>
+    void          LOG(Generic text);
+
+    
+    friend class EasyWifi;
 };
 
 class EasyWifi
@@ -42,6 +88,9 @@ public:
     String        getwebConfigSSID();
 
     void          resetSettings();
+
+    bool          loadCustomParameter();
+    bool          saveCustomParameter();
 
     //sets timeout before webserver loop ends and exits even if there has been no setup.
     //useful for devices that failed to connect at some point and got stuck in a webserver loop
@@ -71,6 +120,7 @@ public:
     void          setCustomHeadElement(const char* element);
     //if this is true, remove duplicated Access Points - defaut true
     void          setRemoveDuplicateAPs(boolean removeDuplicates);
+
 
 private:
     std::unique_ptr<DNSServer>        dnsServer;
