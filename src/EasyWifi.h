@@ -10,6 +10,10 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+
+
 extern "C" {
 #include "user_interface.h"
 }
@@ -91,6 +95,10 @@ public:
 
     bool          loadCustomParameter();
     bool          saveCustomParameter();
+    
+    void          setMQTTcallback(void (*func)(char* topic, byte* payload, unsigned int length));
+    bool          autoConnectMQTT(char const *server,  int port);
+    
 
     //sets timeout before webserver loop ends and exits even if there has been no setup.
     //useful for devices that failed to connect at some point and got stuck in a webserver loop
@@ -110,6 +118,8 @@ public:
     void          setAPCallback( void (*func)(EasyWifi*) );
     //called when settings have been changed and connection was successful
     void          setSaveConfigCallback( void (*func)(void) );
+
+    void          setAPConnectedCallback( void (*func)(void) );
     //adds a custom parameter, returns false on failure
     bool          addParameter(EasyWifiParameter *p);
     //if this is set, it will exit after config, even if connection is unsuccessful.
@@ -125,6 +135,8 @@ public:
 private:
     std::unique_ptr<DNSServer>        dnsServer;
     std::unique_ptr<ESP8266WebServer> server;
+    std::unique_ptr<WiFiClient> espClient;
+    std::unique_ptr<PubSubClient> client;
 
     void          setupWebConfig();
     void          startWPS();
@@ -154,7 +166,10 @@ private:
 
     void (*_apcallback)(EasyWifi*) = NULL;
     void (*_savecallback)(void) = NULL;
+    void (*_apConnectedcallback)(void) = NULL;
+    void (*_mqttSubcallback)(char* topic, byte* payload, unsigned int length) = NULL;
 
+    void apConnectedOK();
 
     template <typename Generic>
     void          LOGD(Generic text);

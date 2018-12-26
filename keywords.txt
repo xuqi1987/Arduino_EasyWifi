@@ -31,6 +31,9 @@ getID KEYWORD2
 getValue KEYWORD2
 getPlaceholder KEYWORD2
 getValueLength KEYWORD2
+loadCustomParameter KEYWORD2
+saveCustomParameter KEYWORD2
+autoConnectMQTT KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

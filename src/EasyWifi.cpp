@@ -46,6 +46,7 @@ boolean EasyWifi::autoConnect(char const *apName, char const *apPassword) {
         LOG(F("IP Address:"));
         // 连接成功，打印当前的IP
         LOGD(WiFi.localIP());
+        apConnectedOK();
         //connected
         return true;
     }
@@ -136,6 +137,7 @@ boolean  EasyWifi::startWebConfig(char const *apName, char const *apPassword) {
         LOG(F("IP Address:"));
         // 连接成功，打印当前的IP
         LOGD(WiFi.localIP());
+        apConnectedOK();
     }
     return  WiFi.status() == WL_CONNECTED;
 }
@@ -327,7 +329,7 @@ bool EasyWifi::loadCustomParameter() {
                         String value = json[key].as<String>();
                         int length = value.length();
                         _params[j]->_length = length;
-                        strncpy(_params[j]->_value, value.c_str(),length);
+                        strncpy(_params[j]->_value, value.c_str(),length+1);
                         
                         LOG(key);
                         LOG(" ==> ");
@@ -428,6 +430,39 @@ bool EasyWifi::saveCustomParameter() {
     }
 }
 
+
+void EasyWifi::setMQTTcallback(void (*func)(char* topic, byte* payload, unsigned int length)) {
+    _mqttSubcallback = func;
+}
+
+bool EasyWifi::autoConnectMQTT(char const *server,  int port = 1883) {
+
+    LOGD("autoConnectMQTT");
+    espClient.reset(new WiFiClient());
+    client.reset(new PubSubClient(*espClient));
+    client->setServer(server,port);
+    unsigned long start = millis();
+
+    while (!client->connected())
+    {
+        client->connect(String(ESP.getChipId()).c_str());
+        delay(500);
+        LOGD(millis());
+        if (millis() > start + 500*20) {
+            return false;
+        }
+    }
+    LOGD("MQTT Connected!");
+    
+    while(client->connected()) 
+    {
+        //client->loop();
+        client->publish("/test", "hello");
+        LOGD("pub:hello");
+        delay(1000);
+    }
+    return true;
+}
 bool EasyWifi::addParameter(EasyWifiParameter *p) {
 
     if(_paramsCount + 1 > _max_params)
@@ -451,9 +486,6 @@ bool EasyWifi::addParameter(EasyWifiParameter *p) {
     
     return true;
 }
-
-
-
 
 boolean EasyWifi::webConfigHasTimeout(){
     if(_webConfigTimeout == 0 || wifi_softap_get_station_num() > 0){
@@ -984,6 +1016,9 @@ void EasyWifi::setSaveConfigCallback( void (*func)(void) ) {
     _savecallback = func;
 }
 
+void EasyWifi::setAPConnectedCallback( void (*func)(void) ) {
+    _apConnectedcallback = func;
+}
 //sets a custom element to add to head, like a new style tag
 void EasyWifi::setCustomHeadElement(const char* element) {
     _customHeadElement = element;
@@ -992,6 +1027,31 @@ void EasyWifi::setCustomHeadElement(const char* element) {
 //if this is true, remove duplicated Access Points - defaut true
 void EasyWifi::setRemoveDuplicateAPs(boolean removeDuplicates) {
     _removeDuplicateAPs = removeDuplicates;
+}
+
+
+void EasyWifi::apConnectedOK()
+{
+    // LOGD("Connected!");
+    // espClient.reset(new WiFiClient());
+    // client.reset(new PubSubClient(*espClient));
+    // client->setServer("dev-xu.top",1883);
+
+    // while (!client->connected())
+    // {
+    //     client->connect("ESP8266Client");
+    //     delay(1000);
+    // }
+    // LOGD("MQTT Connected!");
+    
+    // while(client->connected()) 
+    // {
+    //     client->loop();
+    //     client->publish("/test", "hello");
+    //     LOGD("pub:hello");
+    //     delay(1000);
+    // }
+
 }
 
 template <typename Generic>
